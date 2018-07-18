@@ -1,6 +1,6 @@
 import random as rndm
 
 
-# generates a route at random
 def random_walk(scenario):
+    # generate a route at random
     return rndm.sample(list(range(len(scenario))), len(scenario))
