@@ -4,7 +4,7 @@ from .simulated_annealing import get_distance_normalizer, get_initial_energies, 
 # test that energies are calculated correctly
 
 
-def test_tt():
+def test_energy_function():
     # generate a scenario
     num_nodes = 10
     scenario = generate_scenario(num_nodes)
