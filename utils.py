@@ -1,4 +1,5 @@
 import numpy as np
+from datetime import datetime
 
 
 def generate_scenario(num_nodes, map_size=100):
@@ -10,3 +11,7 @@ def calculate_journey_distance(route_in_xy):
 
 
 assert(calculate_journey_distance(np.array([[0, 0], [4, -3], [8, 0]])) == 18)
+
+
+def time_stamp():
+    return datetime.now().timestamp() * 1000

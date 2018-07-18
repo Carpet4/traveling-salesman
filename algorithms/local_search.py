@@ -1,5 +1,5 @@
 import numpy as np
-from datetime import datetime
+from utils import time_stamp
 from .random_walk import random_walk
 from .greedy import greedy
 
@@ -88,7 +88,3 @@ def find_pop(route_in_xy):
             if distance_change < 0:
                 return i, j
     return None, None
-
-
-def time_stamp():
-    return datetime.now().timestamp() * 1000

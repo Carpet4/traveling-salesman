@@ -1,30 +1,73 @@
-# https://en.wikipedia.org/wiki/Simulated_annealing
 import numpy as np
-from utils import calculate_journey_distance, generate_scenario
+from utils import calculate_journey_distance, generate_scenario, time_stamp
 # notes to self:
 # easiest way might be to calculate all swap energies each time and
 # pick the worst one that has p() above np.random[0, 1)
 
 
-def simulated_annealing(scenario):
+def simulated_annealing(scenario, time_limit=20000):
+    # simulated annealing (described here: # https://en.wikipedia.org/wiki/Simulated_annealing)
+    # is generally an optimization algorithm that tweaks the state by a little each time
+    # until reaching optimum. in order not to get stuck in local optima, the process sometimes
+    # chooses tweaks with high energy (bad score) in order to shake things up and allow for new pathways
+    # as the optimization proceeds, the "temperature" lowers and high energy tweaks become less and less
+    # likely.
+
+    # time_limit: amount of allowed computation time in milliseconds
+
+    start_time = time_stamp()
+
+    # normalizer that makes the scale (width and height) of the scenario irrelevant
     distance_normalizer = get_distance_normalizer(scenario)
-    energies = get_initial_energies(scenario, distance_normalizer)
+
+    # initiate a route randomaly
+    route = scenario.copy
+    np.random.shuffle(route)
+
+    # score of each possible swap
+    energies = get_initial_energies(route, distance_normalizer)
+
+    while time_stamp() < start_time + time_limit:
+        # figure the current temperature
+        temperature = get_temperature(time_stamp() - start_time, time_limit)
+
+        # get the thresholds for all swaps
+        thresholds = get_thresholds(energies, temperature)
+
+        # get a random number
+        random_num = np.random.random()
+
+        # figure the worst swap above the threshold
+        subtracted_thresholds = thresholds - random_num
+        subtracted_thresholds[subtracted_thresholds < 0] = 2
+        winner_swap = subtracted_thresholds.argmin()
+
+        # swap the nodes
+        swap_nodes(route, winner_swap)
+
+        # recalculate the affected energies
+        recalculate_energies(route, winner_swap)
 
 
+def swap_nodes(route, i):
+    # WARNING! this is not a pure function, it permutates the route!
+    j = (i + 1) % route.shape[0]
+    route[[i, j]] = route[[j, i]]
 
-def neighbor(scenario):
-    return
 
-
-def p(new_energy, old_energy, temperature):
+def get_thresholds(energies, temperature):
     return np.minimum(
-        np.exp(-1 * (old_energy-new_energy) / temperature),
+        np.exp(-1 * energies / temperature),
         1
     )
 
 
-def temperature(time_passed, total_time):
-    return
+def get_temperature(time_passed, total_time, cooling_scalar=2):
+    # determines the temperature AKA how relative likelihood of bad swaps
+    # to be picked
+    # cooling_scalar: higher values lean more towards good swaps
+
+    return (1 - (time_passed / total_time)) / cooling_scalar
 
 
 def get_distance_normalizer(scenario, num_samples=5):
@@ -66,7 +109,7 @@ def get_initial_energies(scenario, normalizer):
     return energies
 
 
-# check that energies are calculated correctly
+# test that energies are calculated correctly
 
 # generate a scenario
 num_nodes = 10
@@ -86,11 +129,9 @@ pre_distance = calculate_journey_distance(scenario) / normalizer
 # swap nodes in various "edge cases" (pun not intended)
 # and make sure the change in distance divided by the normalizer is the same as the energy assigned to the swap
 for i in [4, 0, num_nodes-2, num_nodes-1]:
-    # the node to swap with
-    j = (i + 1) % num_nodes
     # swap'em
     temp_scenario = np.copy(scenario)
-    temp_scenario[[i, j]] = temp_scenario[[j, i]]
+    swap_nodes(temp_scenario, i)
     # compare'em
     post_distance = calculate_journey_distance(temp_scenario) / normalizer
     assert(round(pre_distance + energies[i], 3) == round(post_distance, 3))
