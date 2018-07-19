@@ -10,8 +10,11 @@ def calculate_journey_distance(route_in_xy):
     return np.linalg.norm(route_in_xy - np.roll(route_in_xy, 1, axis=0), axis=1).sum()
 
 
-assert(calculate_journey_distance(np.array([[0, 0], [4, -3], [8, 0]])) == 18)
-
-
 def time_stamp():
     return datetime.now().timestamp() * 1000
+
+
+# translate route between coordinates to route between indices pointing to
+# these coordinates in the scenario
+def xy_route_to_indices_route(scenario, xy_route):
+    return [np.where((scenario == node).all(axis=1))[0][0] for node in xy_route]
