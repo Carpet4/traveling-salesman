@@ -25,33 +25,37 @@ def simulated_annealing(scenario, time_limit=20000):
     np.random.shuffle(route)
 
     # score of each possible swap
-    energies = get_initial_energies(route, distance_normalizer)
+    energy_deltas = get_energy_deltas(route, distance_normalizer)
 
     while time_stamp() < start_time + time_limit:
         # figure the current temperature
         temperature = get_temperature(time_stamp() - start_time, time_limit)
 
         # get the thresholds for all swaps
-        thresholds = get_thresholds(energies, temperature)
+        thresholds = get_thresholds(energy_deltas, temperature)
 
         # get a random number
         random_num = np.random.random()
 
         # get a random swap with threshold above the random number
         available_swaps = np.arange(thresholds.shape[0])[thresholds > random_num]
-        winner_swap = np.random.choice(available_swaps, 1)
 
-        # swap the nodes
-        swap_nodes(route, winner_swap)
+        if available_swaps.size > 0:
+            winner_swap = np.random.choice(available_swaps, 1)
 
-        # recalculate the affected energies
-        recalculate_energies(route, winner_swap)
+            # swap the nodes
+            i, j = swap_index_to_node_indices(winner_swap, scenario.shape[0])
+            route[[i, j]] = route[[j, i]]
+
+            # recalculate the affected energies
+            affected_indices = get_indices_affected_by_swap(winner_swap, scenario.shape[0])
+            new_energy_deltas = get_energy_deltas(route, distance_normalizer, affected_indices)
+            energy_deltas[affected_indices] = new_energy_deltas
 
 
-def swap_nodes(route, i):
-    # WARNING! this is not a pure function, it permutates the route!
-    j = (i + 1) % route.shape[0]
-    route[[i, j]] = route[[j, i]]
+def swap_index_to_node_indices(i, scenario_length):
+    # convert swap index to node indices to swap
+    return i, (i + 1) % scenario_length
 
 
 def get_thresholds(energies, temperature):
@@ -79,14 +83,19 @@ def get_distance_normalizer(scenario, num_samples=5):
     ) / scenario.shape[0]
 
 
-def get_initial_energies(scenario, normalizer):
+def get_indices_affected_by_swap(swap_index, scenario_length):
+    # figure which edges were changed by a certain swap
+    return [(swap_index - 1) % scenario_length, (swap_index + 1) % scenario_length]
+
+
+def get_energy_deltas(scenario, normalizer, relevant_indices):
     # calculate the change in energy (score) for each permutation of swapping two consecutive nodes
     # in the route
 
     # normalizer: a scalar to make sure the size of the scenario's field doesn't affect the energies.
     
     # create four rolled versions of the graph (a swap affects edges between 4 nodes)
-    matrices = [np.roll(scenario, 1 - n, axis=0) for n in range(4)]
+    matrices = [np.roll(scenario, 1 - n, axis=0)[relevant_indices] for n in range(4)]
     
     # calculate the vectors of the two edges added and two edges removed by each swap
     # the four vector groups are piled up for efficiency
