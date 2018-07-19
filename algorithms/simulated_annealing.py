@@ -37,10 +37,9 @@ def simulated_annealing(scenario, time_limit=20000):
         # get a random number
         random_num = np.random.random()
 
-        # figure the worst swap above the threshold
-        subtracted_thresholds = thresholds - random_num
-        subtracted_thresholds[subtracted_thresholds < 0] = 2
-        winner_swap = subtracted_thresholds.argmin()
+        # get a random swap with threshold above the random number
+        available_swaps = np.arange(thresholds.shape[0])[thresholds > random_num]
+        winner_swap = np.random.choice(available_swaps, 1)
 
         # swap the nodes
         swap_nodes(route, winner_swap)
