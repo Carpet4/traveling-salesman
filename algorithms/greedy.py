@@ -1,8 +1,9 @@
 import numpy as np
 
 
-# an algorithm that always moves to the closest node
 def greedy(scenario):
+    # an algorithm that always moves to the closest node
+
     route = [0]
 
     # while there are still unvisited nodes, add the nearest node to the route

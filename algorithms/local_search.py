@@ -1,5 +1,5 @@
 import numpy as np
-from datetime import datetime
+from utils import time_stamp
 from .random_walk import random_walk
 from .greedy import greedy
 
@@ -40,8 +40,9 @@ def local_search(scenario, initiate_greedy=True, use_segment_flip=True, use_pop=
     return route
 
 
-# find a segment of the route to flip so the route length is shortened
 def find_segment_flip(route_in_xy):
+    # find a segment of the route to flip so the route length is shortened
+
     for i in range(len(route_in_xy) - 2):
         for j in range(i + 3, len(route_in_xy)):
             # indices of the nodes involved
@@ -61,8 +62,9 @@ def find_segment_flip(route_in_xy):
     return None, None
 
 
-# find a node that is better of at a different location in the route
 def find_pop(route_in_xy):
+    # find a node that is better of at a different location in the route
+
     for i in range(1, len(route_in_xy) - 1):
         # figure the available spots of which placing the node would make sense
         # the pop changes that can be interpreted as a segment-flip are also removed
@@ -86,7 +88,3 @@ def find_pop(route_in_xy):
             if distance_change < 0:
                 return i, j
     return None, None
-
-
-def time_stamp():
-    return datetime.now().timestamp() * 1000
