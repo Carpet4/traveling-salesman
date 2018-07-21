@@ -4,22 +4,20 @@ from .random_walk import random_walk
 from .greedy import greedy
 
 
-def local_search(scenario, initiate_greedy=True, use_segment_flip=True, use_pop=True, time_limit=None):
-    if time_limit:
-        stop_time = time_stamp() + time_limit
-    else:
-        stop_time = np.inf
+def local_search(scenario, initiate_greedy=True, use_segment_flip=True, use_pop=True, time_limit=np.inf):
+
+    stop_time = time_stamp() + time_limit
 
     # initiate a route
     if initiate_greedy:
-        route = greedy(scenario)
+        route = scenario[greedy(scenario)]
     else:
-        route = random_walk(scenario)
+        route = scenario[random_walk(scenario)]
 
     while time_stamp() < stop_time:
         if use_segment_flip:
             # the two endpoints of the segment to flip
-            segment_start, segment_end = find_segment_flip(scenario[route + [route[0]]])
+            segment_start, segment_end = find_segment_flip(route)
 
             if segment_start is not None:
                 route[segment_start + 1: segment_end] = route[segment_end - 1: segment_start: -1]
@@ -40,16 +38,16 @@ def local_search(scenario, initiate_greedy=True, use_segment_flip=True, use_pop=
     return route
 
 
-def find_segment_flip(route_in_xy):
+def find_segment_flip(route):
     # find a segment of the route to flip so the route length is shortened
 
-    for i in range(len(route_in_xy) - 2):
-        for j in range(i + 3, len(route_in_xy)):
+    for i in np.arange(len(route) - 1):
+        for j in np.range(i + 3, len(route) + 1):
             # indices of the nodes involved
-            n1, n2, n3, n4 = i, i + 1, j - 1, j
+            n1, n2, n3, n4 = np.array(i, i + 1, j - 1, j) % len(route)
 
             # calculate the magnitudes of both the newly formed edges and the edges removed by the segment_flip
-            matrix = route_in_xy[[n1, n2, n1, n3]] - route_in_xy[[n3, n4, n2, n4]]
+            matrix = route[[n1, n2, n1, n3]] - route[[n3, n4, n2, n4]]
             magnitudes = np.linalg.norm(matrix, axis=1)
 
             # subtract the removed edges from the added ones
@@ -57,7 +55,7 @@ def find_segment_flip(route_in_xy):
 
             # annoying conditioning since np.linalg isn't 100% precise..
             # can give different results for same spots depending on order
-            if distance_change < 0 and (i != 0 or j != len(route_in_xy) - 1):
+            if distance_change < 0 and (i != 0 or j != len(route) - 1):
                 return i, j
     return None, None
 
