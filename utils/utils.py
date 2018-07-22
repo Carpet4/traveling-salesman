@@ -18,3 +18,7 @@ def time_stamp():
 # these coordinates in the scenario
 def xy_route_to_indices_route(scenario, xy_route):
     return [np.where((scenario == node).all(axis=1))[0][0] for node in xy_route]
+
+
+def random_arange(*args):
+    return np.random.permutation(np.arange(*args))
