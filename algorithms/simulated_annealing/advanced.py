@@ -41,11 +41,10 @@ def simulated_annealing(scenario, time_limit=40000, use_flips=True, use_pops=Tru
             if segment_start is not None:
                 route[segment_start + 1: segment_end] = route[segment_end - 1: segment_start: -1]
                 counter += 1
-                print(counter, random_threshold, calculate_journey_distance(route))
 
         if use_pops:
             pop_from, place_at = find_pop(route, threshold=random_threshold)
-            # if found a pop that shortens the route
+            # if succeeded to find a pop below the threshold
             if pop_from is not None:
                 # simulating a python list pop() and insert() using math
 
@@ -53,7 +52,6 @@ def simulated_annealing(scenario, time_limit=40000, use_flips=True, use_pops=Tru
                     route[place_at:pop_from + 1] = route[np.r_[pop_from, place_at:pop_from]]
                 else:
                     route[pop_from:place_at] = route[np.r_[pop_from + 1:place_at, pop_from]]
-                print(counter, random_threshold, calculate_journey_distance(route))
                 continue
     # turn the coordinates route to indices route each pointing
     # to its corresponding node in the original scenario array.
