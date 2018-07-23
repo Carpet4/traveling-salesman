@@ -1,5 +1,5 @@
 import numpy as np
-from utils import time_stamp, xy_route_to_indices_route, random_arange
+from utils import time_stamp, xy_route_to_indices_route, find_segment_flip, find_pop
 from .random_walk import random_walk
 from .greedy import greedy
 
@@ -37,49 +37,3 @@ def local_search(scenario, initiate_greedy=True, use_segment_flip=True, use_pop=
                 continue
         break
     return xy_route_to_indices_route(scenario, route)
-
-
-def find_segment_flip(route):
-    # find a segment of the route to flip so the route length is shortened
-
-    for i in random_arange(len(route) - 1):
-        for j in random_arange(i + 3, len(route) + 1):
-            # indices of the nodes involved
-            n1, n2, n3, n4 = np.array([i, i + 1, j - 1, j]) % len(route)
-
-            # calculate the magnitudes of both the newly formed edges and the edges removed by the segment_flip
-            matrix = route[[n1, n2, n1, n3]] - route[[n3, n4, n2, n4]]
-            magnitudes = np.linalg.norm(matrix, axis=1)
-
-            # subtract the removed edges from the added ones
-            distance_change = (magnitudes[:2] - magnitudes[2:]).sum()
-
-            # annoying conditioning since np.linalg isn't 100% precise..
-            # can give different results for same spots depending on order
-            if distance_change < 0 and (i != 0 or j != len(route)):
-                return i, j
-    return None, None
-
-
-def find_pop(route):
-    # find a node that is better of at a different location in the route
-
-    for i in random_arange(len(route)):
-        # a list of available spots, removing the identity pop and pops that
-        # are identical to segment flips.
-        available_spots = np.random.permutation([x for x in range(len(route)) if 1 < (i - x) % len(route) < len(route) - 2])
-
-        for j in available_spots:
-            # indices of the nodes involved, n0 is the popped one
-            n0, n1, n2, n3, n4 = np.array([i, i - 1, i + 1, j - 1, j]) % len(route)
-
-            # calculate the magnitudes of both the newly formed edges and the edges removed by the pop
-            matrix = route[[n1, n3, n4, n3, n1, n2]] - route[[n2, n0, n0, n4, n0, n0]]
-            magnitudes = np.linalg.norm(matrix, axis=1)
-
-            # subtract the removed edges from the added ones
-            distance_change = (magnitudes[:3] - magnitudes[3:]).sum()
-
-            if distance_change < 0:
-                return i, j
-    return None, None

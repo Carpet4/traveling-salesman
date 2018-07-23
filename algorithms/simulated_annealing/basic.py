@@ -1,8 +1,6 @@
 import numpy as np
-from utils import calculate_journey_distance, generate_scenario, time_stamp, xy_route_to_indices_route
-# notes to self:
-# easiest way might be to calculate all swap energies each time and
-# pick the worst one that has p() above np.random[0, 1)
+from utils import time_stamp, xy_route_to_indices_route, get_average_edge_length
+from .tools import get_temperature
 
 
 def simulated_annealing(scenario, time_limit=20000):
@@ -13,6 +11,8 @@ def simulated_annealing(scenario, time_limit=20000):
     # as the optimization proceeds, the "temperature" lowers and high energy tweaks become less and less
     # likely.
 
+    # the basic version only mutates the route using swaps, AKA a swap between two consecutive nodes
+
     # time_limit: amount of allowed computation time in milliseconds
 
     start_time = time_stamp()
@@ -20,9 +20,9 @@ def simulated_annealing(scenario, time_limit=20000):
     scenario_len = scenario.shape[0]
 
     # normalizer that makes the scale (width and height) of the scenario irrelevant
-    distance_normalizer = get_distance_normalizer(scenario)
+    distance_normalizer = get_average_edge_length(scenario)
 
-    # initiate a route randomaly
+    # initiate a route randomly
     route = scenario.copy()
     np.random.shuffle(route)
 
@@ -66,28 +66,11 @@ def swap_index_to_node_indices(i, scenario_length):
 
 
 def get_thresholds(energies, temperature):
+    # calculate a threshold for the activation of each route mutation
     return np.minimum(
         np.exp(-1 * energies / temperature),
         1
     )
-
-
-def get_temperature(time_passed, total_time, cooling_scalar=1):
-    # determines the temperature AKA how relative likelihood of bad swaps
-    # to be picked
-    # cooling_scalar: higher values lean more towards good swaps
-
-    return (1 - (time_passed / total_time)) / cooling_scalar
-
-
-def get_distance_normalizer(scenario, num_samples=5):
-    # calculate the average distance between nodes in the scenario
-    # by taking random samples of it and averaging the distances between each two consecutive nodes
-    # num_samples: the amount of random samples to test, the more - the more accurate
-
-    return np.average(
-        [calculate_journey_distance(np.random.permutation(scenario)) for _ in range(num_samples)]
-    ) / scenario.shape[0]
 
 
 def get_indices_affected_by_swap(swap_index, scenario_length):
