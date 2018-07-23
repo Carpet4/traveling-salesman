@@ -83,3 +83,8 @@ def get_average_edge_length(scenario, num_samples=5):
     return np.average(
         [calculate_journey_distance(np.random.permutation(scenario)) for _ in range(num_samples)]
     ) / scenario.shape[0]
+
+
+def get_distance_matrix(scenario):
+    # figure the distance between each two nodes in the scenario
+    return np.linalg.norm(scenario[:, :] - scenario[:, None], axis=2)
