@@ -1,6 +1,8 @@
 import numpy as np
 from utils import calculate_journey_distance, generate_scenario
-from .simulated_annealing import get_distance_normalizer, get_energy_deltas, swap_index_to_node_indices
+from .basic import get_energy_deltas, swap_index_to_node_indices
+from utils import get_average_edge_length
+
 # test that energies are calculated correctly
 
 
@@ -11,7 +13,7 @@ def test_energy_function():
 
     # figure the average distance between nodes that is used to
     # normalize energies.
-    normalizer = get_distance_normalizer(scenario)
+    normalizer = get_average_edge_length(scenario)
 
     # initial energies for the scenario
     energies = get_energy_deltas(scenario, normalizer, np.arange(num_nodes))
