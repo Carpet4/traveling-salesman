@@ -1,9 +1,9 @@
-# https://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms
 import numpy as np
 from utils import get_distance_matrix
 
-def ant_colony_optimization(scenario, evaporation_speed = 1/10):
-    #
+
+def ant_colony_optimization(scenario, evaporation_speed=1/10):
+    # https://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms
 
     # evaporation_speed: the ratio in which new pheromones replace
     # old ones in each time step
@@ -14,9 +14,9 @@ def ant_colony_optimization(scenario, evaporation_speed = 1/10):
     # pheromone amount in each edge
     pheromones = get_initial_pheromones(edge_lengths)
 
-    while not did_converge(pheromones):  # TODO: replace true with some condition
+    while not did_converge(pheromones):
         # let the ants go wild and release pheromones
-        ant_routes = release_ants(pheromones)
+        ant_routes = release_ants(pheromones, num_ants=scenario.shape[0])
         pheromone_update_matrix = calculate_produced_pheromones(ant_routes, edge_lengths)
 
         # normalize the new pheromones and add them to the total pheromones
@@ -27,6 +27,29 @@ def ant_colony_optimization(scenario, evaporation_speed = 1/10):
         pheromones /= pheromones.sum() * scenario.shape[0]
 
     return pheromones_to_route(pheromones)
+
+
+def pheromones_to_route(pheromones):
+    # follow the strongest pheromone track to generate a route
+
+    route = [0]
+
+    while len(route) < pheromones.shape[0]:
+        options = get_node_edge_pheromones(pheromones, route[-1])
+        options[route] = 0
+        route.append(options.argmax)
+
+    return route
+
+
+def did_converge(pheromones):
+    # go over all nodes and check the their second most pheromonized edge,
+    # if its lower than 0.5, there is no convergence (pheromone values generally
+    # aren't supposed to go above 1 although technically possible)
+    for options in [get_node_edge_pheromones(pheromones, i) for i in range(pheromones.shape)]:
+        if np.partition(options.flatten(), -2)[-2] < 0.5:
+            return False
+    return True
 
 
 def get_initial_pheromones(edge_lengths):
@@ -74,10 +97,15 @@ def calculate_produced_pheromones(ant_routes, edge_lengths):
 
 def get_next_node(pheromones, route):
     # gather all the edges from the current node
-    options = np.concatenate(pheromones[:route[-1] + 1, route[-1]], pheromones[route[-1], route[-1]+1:])
+    options = get_node_edge_pheromones(pheromones, route[-1])
     # exclude the ones leading to already visited nodes
     options[route] = 0
     # normalize to sum of 1
     probability_vector = options / options.sum()
     # choose one at random using the normalized pheromones as distributions
     return np.random.choice(options.shape[0], 1, probability_vector)[0]
+
+
+def get_node_edge_pheromones(pheromones, node):
+    # get the pheromone values of the node's edges
+    return np.concatenate(pheromones[:node + 1, node], pheromones[node, node + 1:])
