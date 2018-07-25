@@ -1,12 +1,11 @@
 import numpy as np
-from utils import calculate_journey_distance, generate_scenario
+from utils import calculate_journey_distance, generate_scenario, get_average_edge_length
 from .basic import get_energy_deltas, swap_index_to_node_indices
-from utils import get_average_edge_length
-
-# test that energies are calculated correctly
 
 
 def test_energy_function():
+    # test that energies are calculated correctly
+
     # generate a scenario
     num_nodes = 10
     scenario = generate_scenario(num_nodes)
