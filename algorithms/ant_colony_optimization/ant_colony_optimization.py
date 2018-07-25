@@ -2,7 +2,7 @@ import numpy as np
 from utils import get_distance_matrix, generate_scenario
 
 
-def ant_colony_optimization(scenario, evaporation_speed=1/10):
+def ant_colony_optimization(scenario, discount_factor=9/10):
     # https://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms
 
     # evaporation_speed: the ratio in which new pheromones replace
@@ -14,18 +14,23 @@ def ant_colony_optimization(scenario, evaporation_speed=1/10):
     # pheromone amount in each edge
     pheromones = get_initial_pheromones(edge_lengths)
 
-    while not did_converge(pheromones):
-        print(pheromones[0].max(), pheromones[0][pheromones[0] > 0].min())
+    # variables to keep track of the pheromone convergence
+    no_convergence_counter, best_convergence_score = test_convergence(pheromones, 0, 0)
+
+    while not did_fully_converge(pheromones) and no_convergence_counter < 10:
         # let the ants go wild and release pheromones
-        ant_routes = release_ants(pheromones, num_ants=scenario.shape[0])
+        ant_routes = release_ants(pheromones, edge_lengths, num_ants=scenario.shape[0])
         pheromone_update_matrix = calculate_produced_pheromones(ant_routes, edge_lengths)
 
-        # normalize the new pheromones and add them to the total pheromones
-        pheromone_update_matrix /= (pheromone_update_matrix.sum() / (scenario.shape[0] * evaporation_speed))
+        # normalize the old and new pheromones according to the discount factor
+        pheromones *= discount_factor
+        pheromone_update_matrix /= (pheromone_update_matrix.sum() / (scenario.shape[0] * (1 - discount_factor)))
+
+        # merge old pheromones with new pheromones
         pheromones += pheromone_update_matrix
 
-        # normalize the pheromones to avoid overflow
-        pheromones /= (pheromones.sum() / scenario.shape[0])
+        # check convergence
+        no_convergence_counter, best_convergence_score = test_convergence(pheromones, no_convergence_counter, best_convergence_score)
 
     return pheromones_to_route(pheromones)
 
@@ -36,18 +41,18 @@ def pheromones_to_route(pheromones):
     route = [0]
 
     while len(route) < pheromones.shape[0]:
-        options = get_node_edge_pheromones(pheromones, route[-1])
+        options = get_node_edges(pheromones, route[-1])
         options[route] = 0
         route.append(options.argmax())
 
     return route
 
 
-def did_converge(pheromones):
+def did_fully_converge(pheromones):
     # go over all nodes and check the their second most pheromonized edge,
     # if its lower than 0.5, there is no convergence (pheromone values generally
     # aren't supposed to go above 1 although technically possible)
-    for options in [get_node_edge_pheromones(pheromones, i) for i in range(pheromones.shape[0])]:
+    for options in [get_node_edges(pheromones, i) for i in range(pheromones.shape[0])]:
         if np.partition(options.flatten(), -2)[-2] < 0.5:
             return False
     return True
@@ -63,16 +68,16 @@ def get_initial_pheromones(edge_lengths):
     return pheromones
 
 
-def release_ants(pheromones, num_ants):
+def release_ants(pheromones, edge_lengths, num_ants):
     # let n ants walk and produce routes
-    return [produce_ant_route(pheromones) for _ in range(num_ants)]
+    return [produce_ant_route(pheromones, edge_lengths) for _ in range(num_ants)]
 
 
-def produce_ant_route(pheromones):
+def produce_ant_route(pheromones, edge_lengths):
     route = [np.random.randint(pheromones.shape[0])]
 
     for _ in range(pheromones.shape[0] - 1):
-        next_node = get_next_node(pheromones, route)
+        next_node = get_next_node(pheromones, edge_lengths, route)
         route.append(next_node)
 
     return route
@@ -97,28 +102,54 @@ def calculate_produced_pheromones(ant_routes, edge_lengths):
     return produced_pheromones
 
 
-def get_next_node(pheromones, route):
-    # gather all the edges from the current node
-    options = get_node_edge_pheromones(pheromones, route[-1])
-    # exclude the ones leading to already visited nodes
-    options[route] = 0
-    # normalize to sum of 1
-    probability_vector = softmax(options)  # options / options.sum()
+def get_next_node(pheromones, edge_lengths, route):
+    # gather all edge data of current node
+    edge_pheromones = get_node_edges(pheromones, route[-1])
+    edge_lengths = get_node_edges(edge_lengths, route[-1])
+
+    # generate a probability vector for the ant to choose its next edge from
+    probability_vector = generate_ant_probability_vector(edge_pheromones, edge_lengths, route)
+
     # choose one at random using the normalized pheromones as distributions
-    print(probability_vector)
-    return np.random.choice(options.shape[0], 1, p=probability_vector)[0]
+    return np.random.choice(pheromones.shape[0], 1, p=probability_vector)[0]
 
 
-def get_node_edge_pheromones(pheromones, node):
+def generate_ant_probability_vector(pheromone_vec, length_vec, route):
+    # generate a probability vector for the ant to choose its next edge to walk.
+    # ants are more likely to choose shorter edges with more pheromones
+    probability_vector = pheromone_vec
+
+    # exclude edges leading to already visited nodes
+    probability_vector[route] = 0
+
+    # divide the pheromones by the edge lengths
+    probability_vector[probability_vector > 0] /= length_vec[probability_vector > 0]
+
+    # normalize vector to sum of 1
+    probability_vector /= probability_vector.sum()
+
+    return probability_vector
+
+
+def get_node_edges(edge_matrix, node):
     # get the pheromone values of the node's edges
-    return np.concatenate((pheromones[:node + 1, node], pheromones[node, node + 1:]))
+    return np.concatenate((edge_matrix[:node + 1, node], edge_matrix[node, node + 1:]))
 
 
 def softmax(vector):
     pre_normalized = np.exp(vector - np.max(vector))
     return pre_normalized / pre_normalized.sum()
-#
-#
-# scenario = generate_scenario(10)
-# route = ant_colony_optimization(scenario)
-# print(route)
+
+
+def test_convergence(pheromones, convergence_counter, old_convergence_score):
+    # calculate a score for how polarized are the pheromone values towards 0 and high numbers.
+    # if the score is higher, reset the counter and keep the new highest score
+    # otherwise increase the counter by 1
+
+    new_convergence_score = np.sum(pheromones ** 2) / pheromones.shape[0]
+
+    if new_convergence_score > old_convergence_score:
+        return 0, new_convergence_score
+
+    return convergence_counter + 1, old_convergence_score
+

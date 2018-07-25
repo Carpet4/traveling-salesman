@@ -1,5 +1,5 @@
 import numpy as np
-from .ant_colony_optimization import calculate_produced_pheromones, did_converge
+from .ant_colony_optimization import calculate_produced_pheromones, did_fully_converge, produce_ant_route
 
 
 def test_calculate_produced_pheromones():
@@ -27,7 +27,7 @@ def test_calculate_produced_pheromones():
     assert(np.allclose(expected_result, produced_pheromones))
 
 
-def test_did_converge():
+def test_did_fully_converge():
     # convergence occurs of each node has two connected edges
     # with over 0.5
     converged_pheromones = np.array([[0.0, 0.1, 0.6, 0.7],
@@ -35,11 +35,30 @@ def test_did_converge():
                                      [0.0, 0.0, 0.0, 0.0],
                                      [0.0, 0.0, 0.0, 0.0]])
 
-    assert (did_converge(converged_pheromones) is True)
+    assert (did_fully_converge(converged_pheromones) is True)
 
     non_converged_pheromones = np.array([[0.0, 0.1, 0.4, 0.7],
                                          [0.0, 0.0, 0.8, 0.6],
                                          [0.0, 0.0, 0.0, 0.0],
                                          [0.0, 0.0, 0.0, 0.0]])
 
-    assert (did_converge(non_converged_pheromones) is False)
+    assert (did_fully_converge(non_converged_pheromones) is False)
+
+
+def test_produce_ant_route():
+    # make sure the ant route is a legit route
+
+    pheromones = np.array([[0.0, 0.1, 0.6, 0.7],
+                           [0.0, 0.0, 0.8, 0.6],
+                           [0.0, 0.0, 0.0, 0.2],
+                           [0.0, 0.0, 0.0, 0.0]])
+
+    edge_lengths = np.array([[0.0, 0.8, 0.4, 0.7],
+                             [0.0, 0.0, 0.3, 0.6],
+                             [0.0, 0.0, 0.0, 0.8],
+                             [0.0, 0.0, 0.0, 0.0]])
+
+    ant_route = produce_ant_route(pheromones, edge_lengths)
+
+    assert(len(ant_route) is 4 and np.all(np.in1d([0, 1, 2, 3], ant_route)))
+
