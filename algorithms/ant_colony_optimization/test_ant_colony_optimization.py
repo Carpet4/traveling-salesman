@@ -58,7 +58,7 @@ def test_produce_ant_route():
                              [0.0, 0.0, 0.0, 0.8],
                              [0.0, 0.0, 0.0, 0.0]])
 
-    ant_route = produce_ant_route(pheromones, edge_lengths)
+    ant_route = produce_ant_route(pheromones, edge_lengths, 1)
 
     assert(len(ant_route) is 4 and np.all(np.in1d([0, 1, 2, 3], ant_route)))
 

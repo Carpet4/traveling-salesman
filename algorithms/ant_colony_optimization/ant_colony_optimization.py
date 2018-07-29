@@ -1,12 +1,13 @@
 import numpy as np
-from utils import get_distance_matrix, generate_scenario
+from utils import get_distance_matrix
 
 
-def ant_colony_optimization(scenario, discount_factor=9/10):
+def ant_colony_optimization(scenario, discount_factor=9/10, beta=1):
     # https://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms
 
-    # evaporation_speed: the ratio in which new pheromones replace
-    # old ones in each time step
+    # discount_factor: the ratio in which new pheromones replace
+    # old ones in each time step.
+    # beta: the amount of importance the length of an edge has over the ant's decisions.
 
     # a matrix holding the distance between each two nodes
     edge_lengths = get_distance_matrix(scenario)
@@ -19,7 +20,7 @@ def ant_colony_optimization(scenario, discount_factor=9/10):
 
     while not did_fully_converge(pheromones) and no_convergence_counter < 10:
         # let the ants go wild and release pheromones
-        ant_routes = release_ants(pheromones, edge_lengths, num_ants=scenario.shape[0])
+        ant_routes = release_ants(pheromones, edge_lengths, num_ants=scenario.shape[0], beta=beta)
         pheromone_update_matrix = calculate_produced_pheromones(ant_routes, edge_lengths)
 
         # normalize the old and new pheromones according to the discount factor
@@ -68,16 +69,16 @@ def get_initial_pheromones(edge_lengths):
     return pheromones
 
 
-def release_ants(pheromones, edge_lengths, num_ants):
+def release_ants(pheromones, edge_lengths, num_ants, beta):
     # let n ants walk and produce routes
-    return [produce_ant_route(pheromones, edge_lengths) for _ in range(num_ants)]
+    return [produce_ant_route(pheromones, edge_lengths, beta) for _ in range(num_ants)]
 
 
-def produce_ant_route(pheromones, edge_lengths):
+def produce_ant_route(pheromones, edge_lengths, beta):
     route = [np.random.randint(pheromones.shape[0])]
 
     for _ in range(pheromones.shape[0] - 1):
-        next_node = get_next_node(pheromones, edge_lengths, route)
+        next_node = get_next_node(pheromones, edge_lengths, route, beta)
         route.append(next_node)
 
     return route
@@ -102,19 +103,19 @@ def calculate_produced_pheromones(ant_routes, edge_lengths):
     return produced_pheromones
 
 
-def get_next_node(pheromones, edge_lengths, route):
+def get_next_node(pheromones, edge_lengths, route, beta):
     # gather all edge data of current node
     edge_pheromones = get_node_edges(pheromones, route[-1])
     edge_lengths = get_node_edges(edge_lengths, route[-1])
 
     # generate a probability vector for the ant to choose its next edge from
-    probability_vector = generate_ant_probability_vector(edge_pheromones, edge_lengths, route)
+    probability_vector = generate_ant_probability_vector(edge_pheromones, edge_lengths, route, beta)
 
     # choose one at random using the normalized pheromones as distributions
     return np.random.choice(pheromones.shape[0], 1, p=probability_vector)[0]
 
 
-def generate_ant_probability_vector(pheromone_vec, length_vec, route):
+def generate_ant_probability_vector(pheromone_vec, length_vec, route, beta):
     # generate a probability vector for the ant to choose its next edge to walk.
     # ants are more likely to choose shorter edges with more pheromones
     probability_vector = pheromone_vec
@@ -123,7 +124,7 @@ def generate_ant_probability_vector(pheromone_vec, length_vec, route):
     probability_vector[route] = 0
 
     # divide the pheromones by the edge lengths
-    probability_vector[probability_vector > 0] /= length_vec[probability_vector > 0]
+    probability_vector[probability_vector > 0] /= length_vec[probability_vector > 0] ** beta
 
     # normalize vector to sum of 1
     probability_vector /= probability_vector.sum()
